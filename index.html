@@ -1,54 +1,53 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>View My Codes</title>
-  <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 50px auto; }
-    input, button { padding: 10px; margin: 10px 0; width: 100%; }
-    .code-box { background: #f3f3f3; padding: 10px; border-radius: 5px; margin: 10px 0; }
-  </style>
-</head>
-<body>
-  <h2>Get My Game Codes</h2>
-  <input type="email" id="emailInput" placeholder="Enter your email" />
-  <button onclick="fetchCodes()">View My Codes</button>
-  <div id="codesOutput"></div>
+<input type="email" id="emailInput" placeholder="Enter your email" />
+<button id="viewBtn">View My Codes</button>
+<button id="refreshBtn" disabled>Refresh Codes 🔄</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+<div id="codesOutput"></div>
 
-    const firebaseConfig = {
-  apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
-  authDomain: "retrogradecodes.firebaseapp.com",
-  projectId: "retrogradecodes"
-    };
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+  };
 
-    window.fetchCodes = async function () {
-      const email = document.getElementById("emailInput").value.trim().toLowerCase();
-      if (!email) return alert("Enter your email");
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-      const docRef = doc(db, "codes", email);
-      const docSnap = await getDoc(docRef);
+  let currentEmail = "";
 
-      const output = document.getElementById("codesOutput");
-      output.innerHTML = "";
+  async function fetchCodes(email) {
+    const docRef = doc(db, "codes", email);
+    const docSnap = await getDoc(docRef);
+    const output = document.getElementById("codesOutput");
+    output.innerHTML = "";
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        for (const [order, code] of Object.entries(data)) {
-          const div = document.createElement("div");
-          div.className = "code-box";
-          div.innerHTML = `<strong>Order #${order}</strong>: ${code} <button onclick="navigator.clipboard.writeText('${code}')">Copy</button>`;
-          output.appendChild(div);
-        }
-      } else {
-        output.innerHTML = "No codes found for this email.";
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      for (const [order, code] of Object.entries(data)) {
+        const div = document.createElement("div");
+        div.className = "code-box";
+        div.innerHTML = `<strong>Order #${order}</strong>: ${code} <button onclick="navigator.clipboard.writeText('${code}')">Copy</button>`;
+        output.appendChild(div);
       }
-    };
-  </script>
-</body>
-</html>
+    } else {
+      output.innerHTML = "No codes found for this email.";
+    }
+  }
+
+  document.getElementById("viewBtn").addEventListener("click", () => {
+    const email = document.getElementById("emailInput").value.trim().toLowerCase();
+    if (!email) return alert("Please enter your email.");
+    currentEmail = email;
+    fetchCodes(email);
+    document.getElementById("refreshBtn").disabled = false;
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", () => {
+    if (!currentEmail) return alert("Please enter your email first.");
+    fetchCodes(currentEmail);
+  });
+</script>
