@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>View My Codes</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 50px auto; }
+    input, button { padding: 10px; margin: 10px 0; width: 100%; }
+    .code-box { background: #f3f3f3; padding: 10px; border-radius: 5px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h2>Get My Game Codes</h2>
+  <input type="email" id="emailInput" placeholder="Enter your email" />
+  <button onclick="fetchCodes()">View My Codes</button>
+  <div id="codesOutput"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.fetchCodes = async function () {
+      const email = document.getElementById("emailInput").value.trim().toLowerCase();
+      if (!email) return alert("Enter your email");
+
+      const docRef = doc(db, "codes", email);
+      const docSnap = await getDoc(docRef);
+
+      const output = document.getElementById("codesOutput");
+      output.innerHTML = "";
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        for (const [order, code] of Object.entries(data)) {
+          const div = document.createElement("div");
+          div.className = "code-box";
+          div.innerHTML = `<strong>Order #${order}</strong>: ${code} <button onclick="navigator.clipboard.writeText('${code}')">Copy</button>`;
+          output.appendChild(div);
+        }
+      } else {
+        output.innerHTML = "No codes found for this email.";
+      }
+    };
+  </script>
+</body>
+</html>
