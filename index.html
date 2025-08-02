@@ -1,53 +1,50 @@
-<input type="email" id="emailInput" placeholder="Enter your email" />
-<button id="viewBtn">View My Codes</button>
-<button id="refreshBtn" disabled>Refresh Codes 🔄</button>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Your Game Codes</title>
+  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h2>Enter Your Email to View Codes</h2>
+  <input type="email" id="emailInput" placeholder="your@email.com" />
+  <button onclick="getCodes()">View My Codes</button>
+  <button onclick="getCodes()">🔄 Refresh</button>
 
-<div id="codesOutput"></div>
+  <div id="codes"></div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+    };
 
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-  };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    async function getCodes() {
+      const email = document.getElementById("emailInput").value.trim().toLowerCase();
+      const codesDiv = document.getElementById("codes");
+      codesDiv.innerHTML = "Loading...";
 
-  let currentEmail = "";
+      const snapshot = await db.collection("codes")
+        .where("email", "==", email)
+        .get();
 
-  async function fetchCodes(email) {
-    const docRef = doc(db, "codes", email);
-    const docSnap = await getDoc(docRef);
-    const output = document.getElementById("codesOutput");
-    output.innerHTML = "";
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      for (const [order, code] of Object.entries(data)) {
-        const div = document.createElement("div");
-        div.className = "code-box";
-        div.innerHTML = `<strong>Order #${order}</strong>: ${code} <button onclick="navigator.clipboard.writeText('${code}')">Copy</button>`;
-        output.appendChild(div);
+      if (snapshot.empty) {
+        codesDiv.innerHTML = "No codes found for this email.";
+        return;
       }
-    } else {
-      output.innerHTML = "No codes found for this email.";
+
+      let html = "<ul>";
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        html += `<li><strong>${data.game || "Unknown Game"}:</strong> ${data.code}</li>`;
+      });
+      html += "</ul>";
+      codesDiv.innerHTML = html;
     }
-  }
-
-  document.getElementById("viewBtn").addEventListener("click", () => {
-    const email = document.getElementById("emailInput").value.trim().toLowerCase();
-    if (!email) return alert("Please enter your email.");
-    currentEmail = email;
-    fetchCodes(email);
-    document.getElementById("refreshBtn").disabled = false;
-  });
-
-  document.getElementById("refreshBtn").addEventListener("click", () => {
-    if (!currentEmail) return alert("Please enter your email first.");
-    fetchCodes(currentEmail);
-  });
-</script>
+  </script>
+</body>
+</html>
