@@ -1,98 +1,59 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Your Game Codes</title>
-  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore-compat.js"></script>
+<title>My Game Codes</title>
+<style>
+button { margin: 5px; }
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <h2>Enter Your Email to View Codes</h2>
-  <input type="email" id="emailInput" placeholder="your@email.com" />
-  <button onclick="getCodes()">View My Codes</button>
-  <button onclick="getCodes()">🔄 Refresh</button>
-
-  <div id="codes"></div>
-
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
-      authDomain: "retrogradecodes.firebaseapp.com",
-      projectId: "retrogradecodes",
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    async function getCodes() {
-      const email = document.getElementById("emailInput").value.trim().toLowerCase();
-      const codesDiv = document.getElementById("codes");
-      codesDiv.innerHTML = "Loading...";
-
-      const snapshot = await db.collection("codes")
-        .where("email", "==", email)
-        .get();
-
-      if (snapshot.empty) {
-        codesDiv.innerHTML = "No codes found for this email.";
-        return;
-      }
-
-      let html = "<ul>";
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        html += `<li><strong>${data.game || "Unknown Game"}:</strong> ${data.code}</li>`;
-      });
-      html += "</ul>";
-      codesDiv.innerHTML = html;
-    }
-  </script>
-  <!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<h1>Access Your Codes</h1>
+<input id="email" placeholder="Enter your order email">
+<button onclick="loadCodes()">Login</button>
+<div id="codes"></div>
 
 <script>
-  // 🔧 Replace this with your actual Firebase config from your project settings
-  const firebaseConfig = {
-    apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
+const firebaseConfig = {
+  apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
   authDomain: "retrogradecodes.firebaseapp.com",
-  projectId: "retrogradecodes",
-  storageBucket: "retrogradecodes.firebasestorage.app",
-  messagingSenderId: "965215909644",
-  appId: "1:965215909644:web:67c041bd24463cab993b29"
-  };
+  projectId: "retrogradecodes"
+};
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-
-  // Fetch and display code
-  async function getCodeByEmail(email) {
-    const snapshot = await db.collection("codes").where("email", "==", email).orderBy("timestamp", "desc").limit(1).get();
-    if (!snapshot.empty) {
-      const data = snapshot.docs[0].data();
-      document.getElementById("codeOutput").innerText = `Latest code: ${data.code}`;
-    } else {
-      document.getElementById("codeOutput").innerText = "No code found for this email.";
-    }
+async function loadCodes() {
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const ordersDoc = await db.collection('orders').doc(email).get();
+  if (!ordersDoc.exists) {
+    document.getElementById('codes').innerHTML = "No orders found.";
+    return;
   }
+  const games = ordersDoc.data().games || [];
+  let html = "";
+  for (const game of games) {
+    const codeDoc = await db.collection('codes').doc(game).get();
+    const code = codeDoc.exists ? codeDoc.data().code : "Not available";
+    html += `<div>
+      <strong>${game}</strong>: ${code}
+      <button onclick="copyCode('${code}')">Copy</button>
+      <button onclick="refreshCode('${game}')">Refresh</button>
+    </div>`;
+  }
+  document.getElementById('codes').innerHTML = html;
+}
 
-  // Handle form submission
-  document.getElementById("lookupForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const email = document.getElementById("emailInput").value.trim().toLowerCase();
-    if (email) {
-      getCodeByEmail(email);
-    }
-  });
+function copyCode(code) {
+  navigator.clipboard.writeText(code);
+  alert("Copied!");
+}
 
-  // Handle manual refresh
-  document.getElementById("refreshBtn").addEventListener("click", function () {
-    const email = document.getElementById("emailInput").value.trim().toLowerCase();
-    if (email) {
-      getCodeByEmail(email);
-    }
-  });
+async function refreshCode(game) {
+  const codeDoc = await db.collection('codes').doc(game).get();
+  const code = codeDoc.exists ? codeDoc.data().code : "Not available";
+  alert(`Refreshed code: ${code}`);
+}
 </script>
-
 </body>
 </html>
