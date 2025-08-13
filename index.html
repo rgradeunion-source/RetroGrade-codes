@@ -1,26 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>My Orders</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    .order { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
-    button { margin-left: 10px; padding: 5px 10px; }
-  </style>
-
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<title>My Game Codes</title>
+<style>
+button { margin: 5px; }
+#error { color: red; margin-top: 20px; }
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 </head>
 <body>
-
-<h2>Your Orders</h2>
-<div id="orders-container">Loading...</div>
+<h1>Access Your Codes</h1>
+<input id="email" placeholder="Enter your order email">
+<button onclick="loadCodes()">Login</button>
+<div id="codes"></div>
+<div id="error"></div>
 
 <script>
-  // TODO: replace with your Firebase config
-  const firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
   authDomain: "retrogradecodes.firebaseapp.com",
   databaseURL: "https://retrogradecodes-default-rtdb.firebaseio.com",
@@ -29,67 +26,47 @@
   messagingSenderId: "965215909644",
   appId: "1:965215909644:web:67c041bd24463cab993b29"
 };
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+async function loadCodes() {
+  document.getElementById('codes').innerHTML = '';
+  document.getElementById('error').innerHTML = '';
 
-  // Example: replace with actual logged-in email
-  const userEmail = prompt("Enter your order email:").trim();
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const ordersDoc = await db.collection('orders').doc(email).get();
 
-  const ordersContainer = document.getElementById("orders-container");
-
-  async function fetchOrdersForEmail(email) {
-    try {
-      const snapshot = await db.collection("codes")
-        .where("senderEmail", "==", email)
-        .orderBy("timestamp", "desc")
-        .get();
-
-      if (snapshot.empty) return [];
-
-      return snapshot.docs.map(doc => doc.data());
-    } catch (err) {
-      console.error("Firestore query error:", err);
-      return null;
-    }
+  if (!ordersDoc.exists || (ordersDoc.data().games || []).length === 0) {
+    document.getElementById('error').innerHTML = "No game codes are associated with this email.";
+    return;
   }
 
-  function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-      alert("Copied to clipboard!");
-    });
+  const games = ordersDoc.data().games || [];
+  let html = "";
+
+  for (const game of games) {
+    const codeDoc = await db.collection('codes').doc(game).get();
+    const code = codeDoc.exists ? codeDoc.data().code : "Not available";
+    html += `<div>
+      <strong>${game}</strong>: ${code}
+      <button onclick="copyCode('${code}')">Copy</button>
+      <button onclick="refreshCode('${game}')">Refresh</button>
+    </div>`;
   }
 
-  async function renderOrders() {
-    try {
-      const orders = await fetchOrdersForEmail(userEmail);
+  document.getElementById('codes').innerHTML = html;
+}
 
-      if (orders === null) {
-        ordersContainer.innerHTML = "<p>Error fetching orders. Check console.</p>";
-        return;
-      }
+function copyCode(code) {
+  navigator.clipboard.writeText(code);
+  alert("Copied!");
+}
 
-      if (orders.length === 0) {
-        ordersContainer.innerHTML = "<p>No orders for this email.</p>";
-        return;
-      }
-
-      ordersContainer.innerHTML = orders.map(order => `
-        <div class="order">
-          <p><strong>Game:</strong> ${order.game}</p>
-          <p><strong>Code:</strong> <span>${order.code}</span>
-            <button onclick="copyToClipboard('${order.code}')">Copy</button>
-          </p>
-          <p><strong>Timestamp:</strong> ${order.timestamp}</p>
-        </div>
-      `).join("");
-    } catch (err) {
-      console.error("Render error:", err);
-      ordersContainer.innerHTML = "<p>Error rendering orders. Check console.</p>";
-    }
-  }
-
-  renderOrders();
+async function refreshCode(game) {
+  const codeDoc = await db.collection('codes').doc(game).get();
+  const code = codeDoc.exists ? codeDoc.data().code : "Not available";
+  alert(`Refreshed code: ${code}`);
+}
 </script>
 </body>
 </html>
