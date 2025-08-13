@@ -21,31 +21,37 @@
 <script>
   // TODO: replace with your Firebase config
   const firebaseConfig = {
-    apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
+  apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
   authDomain: "retrogradecodes.firebaseapp.com",
+  databaseURL: "https://retrogradecodes-default-rtdb.firebaseio.com",
   projectId: "retrogradecodes",
   storageBucket: "retrogradecodes.firebasestorage.app",
   messagingSenderId: "965215909644",
   appId: "1:965215909644:web:67c041bd24463cab993b29"
-  };
+};
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  // Example: replace with actual logged-in email from your login system
+  // Example: replace with actual logged-in email
   const userEmail = prompt("Enter your order email:").trim();
 
   const ordersContainer = document.getElementById("orders-container");
 
   async function fetchOrdersForEmail(email) {
-    const snapshot = await db.collection("codes")
-      .where("senderEmail", "==", email)
-      .orderBy("timestamp", "desc")
-      .get();
+    try {
+      const snapshot = await db.collection("codes")
+        .where("senderEmail", "==", email)
+        .orderBy("timestamp", "desc")
+        .get();
 
-    if (snapshot.empty) return [];
+      if (snapshot.empty) return [];
 
-    return snapshot.docs.map(doc => doc.data());
+      return snapshot.docs.map(doc => doc.data());
+    } catch (err) {
+      console.error("Firestore query error:", err);
+      return null;
+    }
   }
 
   function copyToClipboard(text) {
@@ -55,22 +61,32 @@
   }
 
   async function renderOrders() {
-    const orders = await fetchOrdersForEmail(userEmail);
+    try {
+      const orders = await fetchOrdersForEmail(userEmail);
 
-    if (!orders || orders.length === 0) {
-      ordersContainer.innerHTML = "<p>No orders for this email.</p>";
-      return;
+      if (orders === null) {
+        ordersContainer.innerHTML = "<p>Error fetching orders. Check console.</p>";
+        return;
+      }
+
+      if (orders.length === 0) {
+        ordersContainer.innerHTML = "<p>No orders for this email.</p>";
+        return;
+      }
+
+      ordersContainer.innerHTML = orders.map(order => `
+        <div class="order">
+          <p><strong>Game:</strong> ${order.game}</p>
+          <p><strong>Code:</strong> <span>${order.code}</span>
+            <button onclick="copyToClipboard('${order.code}')">Copy</button>
+          </p>
+          <p><strong>Timestamp:</strong> ${order.timestamp}</p>
+        </div>
+      `).join("");
+    } catch (err) {
+      console.error("Render error:", err);
+      ordersContainer.innerHTML = "<p>Error rendering orders. Check console.</p>";
     }
-
-    ordersContainer.innerHTML = orders.map(order => `
-      <div class="order">
-        <p><strong>Game:</strong> ${order.game}</p>
-        <p><strong>Code:</strong> <span>${order.code}</span>
-          <button onclick="copyToClipboard('${order.code}')">Copy</button>
-        </p>
-        <p><strong>Timestamp:</strong> ${order.timestamp}</p>
-      </div>
-    `).join("");
   }
 
   renderOrders();
