@@ -1,59 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>My Game Codes</title>
-<style>
-button { margin: 5px; }
-</style>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <meta charset="UTF-8">
+  <title>My Orders</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .order { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    button { margin-left: 10px; padding: 5px 10px; }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<h1>Access Your Codes</h1>
-<input id="email" placeholder="Enter your order email">
-<button onclick="loadCodes()">Login</button>
-<div id="codes"></div>
+
+<h2>Your Orders</h2>
+<div id="orders-container">Loading...</div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
+  // TODO: replace with your Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBa-jKP7FsN2eeCDhRLumZiumHHEtXtZqg",
   authDomain: "retrogradecodes.firebaseapp.com",
-  projectId: "retrogradecodes"
-};
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+  projectId: "retrogradecodes",
+  storageBucket: "retrogradecodes.firebasestorage.app",
+  messagingSenderId: "965215909644",
+  appId: "1:965215909644:web:67c041bd24463cab993b29"
+  };
 
-async function loadCodes() {
-  const email = document.getElementById('email').value.trim().toLowerCase();
-  const ordersDoc = await db.collection('orders').doc(email).get();
-  if (!ordersDoc.exists) {
-    document.getElementById('codes').innerHTML = "No orders found.";
-    return;
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Example: replace with actual logged-in email from your login system
+  const userEmail = prompt("Enter your order email:").trim();
+
+  const ordersContainer = document.getElementById("orders-container");
+
+  async function fetchOrdersForEmail(email) {
+    const snapshot = await db.collection("codes")
+      .where("senderEmail", "==", email)
+      .orderBy("timestamp", "desc")
+      .get();
+
+    if (snapshot.empty) return [];
+
+    return snapshot.docs.map(doc => doc.data());
   }
-  const games = ordersDoc.data().games || [];
-  let html = "";
-  for (const game of games) {
-    const codeDoc = await db.collection('codes').doc(game).get();
-    const code = codeDoc.exists ? codeDoc.data().code : "Not available";
-    html += `<div>
-      <strong>${game}</strong>: ${code}
-      <button onclick="copyCode('${code}')">Copy</button>
-      <button onclick="refreshCode('${game}')">Refresh</button>
-    </div>`;
+
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Copied to clipboard!");
+    });
   }
-  document.getElementById('codes').innerHTML = html;
-}
 
-function copyCode(code) {
-  navigator.clipboard.writeText(code);
-  alert("Copied!");
-}
+  async function renderOrders() {
+    const orders = await fetchOrdersForEmail(userEmail);
 
-async function refreshCode(game) {
-  const codeDoc = await db.collection('codes').doc(game).get();
-  const code = codeDoc.exists ? codeDoc.data().code : "Not available";
-  alert(`Refreshed code: ${code}`);
-}
+    if (!orders || orders.length === 0) {
+      ordersContainer.innerHTML = "<p>No orders for this email.</p>";
+      return;
+    }
+
+    ordersContainer.innerHTML = orders.map(order => `
+      <div class="order">
+        <p><strong>Game:</strong> ${order.game}</p>
+        <p><strong>Code:</strong> <span>${order.code}</span>
+          <button onclick="copyToClipboard('${order.code}')">Copy</button>
+        </p>
+        <p><strong>Timestamp:</strong> ${order.timestamp}</p>
+      </div>
+    `).join("");
+  }
+
+  renderOrders();
 </script>
 </body>
 </html>
